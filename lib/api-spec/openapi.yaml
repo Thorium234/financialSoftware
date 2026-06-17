@@ -1,22 +1,37 @@
 openapi: 3.1.0
 info:
-  # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: SchoolLedger Kenya API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: students
+    description: Student management
+  - name: fees
+    description: Fee structures and schedules
+  - name: payments
+    description: Payment records and M-Pesa reconciliation
+  - name: accounts
+    description: Fund accounts (statutory votes)
+  - name: capitation
+    description: Government capitation fund tracking
+  - name: expenses
+    description: Expense vouchers and disbursements
+  - name: reports
+    description: Financial reporting
+  - name: dashboard
+    description: Dashboard summaries
+
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,6 +39,747 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  # ── Dashboard ──────────────────────────────────────────────────────────────
+  /dashboard/summary:
+    get:
+      operationId: getDashboardSummary
+      tags: [dashboard]
+      summary: Financial health summary for the current term
+      responses:
+        "200":
+          description: Dashboard summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardSummary"
+
+  /dashboard/collection-trend:
+    get:
+      operationId: getCollectionTrend
+      tags: [dashboard]
+      summary: Daily/weekly fee collection trend for the current term
+      responses:
+        "200":
+          description: Collection trend data
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CollectionTrendPoint"
+
+  /dashboard/fund-balances:
+    get:
+      operationId: getFundBalances
+      tags: [dashboard]
+      summary: Current balances of all statutory fund accounts
+      responses:
+        "200":
+          description: Fund balances
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/FundBalance"
+
+  /dashboard/recent-payments:
+    get:
+      operationId: getRecentPayments
+      tags: [dashboard]
+      summary: 10 most recent payments with student details
+      responses:
+        "200":
+          description: Recent payments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PaymentWithStudent"
+
+  /dashboard/defaulters-count:
+    get:
+      operationId: getDefaultersCount
+      tags: [dashboard]
+      summary: Count of students with outstanding balances by class
+      responses:
+        "200":
+          description: Defaulters by class
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DefaultersByClass"
+
+  # ── Students ───────────────────────────────────────────────────────────────
+  /students:
+    get:
+      operationId: listStudents
+      tags: [students]
+      summary: List all students with optional filters
+      parameters:
+        - name: search
+          in: query
+          schema:
+            type: string
+          description: Search by name or admission number
+        - name: class
+          in: query
+          schema:
+            type: string
+          description: Filter by class (e.g. Form 1, Form 2)
+        - name: stream
+          in: query
+          schema:
+            type: string
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [active, cleared, suspended]
+      responses:
+        "200":
+          description: List of students
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Student"
+    post:
+      operationId: createStudent
+      tags: [students]
+      summary: Enroll a new student
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StudentInput"
+      responses:
+        "201":
+          description: Student created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Student"
+
+  /students/{id}:
+    get:
+      operationId: getStudent
+      tags: [students]
+      summary: Get student details with ledger balance
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Student detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StudentDetail"
+        "404":
+          description: Not found
+    patch:
+      operationId: updateStudent
+      tags: [students]
+      summary: Update student record
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StudentUpdate"
+      responses:
+        "200":
+          description: Updated student
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Student"
+    delete:
+      operationId: deleteStudent
+      tags: [students]
+      summary: Remove student record
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /students/{id}/statement:
+    get:
+      operationId: getStudentStatement
+      tags: [students]
+      summary: Full fee statement for a student (all terms)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Student statement
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StudentStatement"
+
+  # ── Fee Structures ─────────────────────────────────────────────────────────
+  /fees/structures:
+    get:
+      operationId: listFeeStructures
+      tags: [fees]
+      summary: List fee structures
+      parameters:
+        - name: academicYear
+          in: query
+          schema:
+            type: string
+        - name: term
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Fee structures
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/FeeStructure"
+    post:
+      operationId: createFeeStructure
+      tags: [fees]
+      summary: Create a fee structure for a class/term
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FeeStructureInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FeeStructure"
+
+  /fees/structures/{id}:
+    patch:
+      operationId: updateFeeStructure
+      tags: [fees]
+      summary: Update a fee structure
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FeeStructureUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FeeStructure"
+    delete:
+      operationId: deleteFeeStructure
+      tags: [fees]
+      summary: Delete fee structure
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /fees/defaulters:
+    get:
+      operationId: listDefaulters
+      tags: [fees]
+      summary: Students with outstanding fee balances for current term
+      parameters:
+        - name: class
+          in: query
+          schema:
+            type: string
+        - name: minBalance
+          in: query
+          schema:
+            type: number
+      responses:
+        "200":
+          description: Defaulters list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Defaulter"
+
+  # ── Payments ───────────────────────────────────────────────────────────────
+  /payments:
+    get:
+      operationId: listPayments
+      tags: [payments]
+      summary: List all payment records
+      parameters:
+        - name: studentId
+          in: query
+          schema:
+            type: integer
+        - name: method
+          in: query
+          schema:
+            type: string
+            enum: [mpesa, bank, cash]
+        - name: dateFrom
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: dateTo
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [confirmed, pending, reversed]
+      responses:
+        "200":
+          description: Payments list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PaymentWithStudent"
+    post:
+      operationId: recordPayment
+      tags: [payments]
+      summary: Manually record a cash/bank payment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PaymentInput"
+      responses:
+        "201":
+          description: Payment recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Payment"
+
+  /payments/{id}:
+    get:
+      operationId: getPayment
+      tags: [payments]
+      summary: Get a single payment record
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Payment
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaymentWithStudent"
+    delete:
+      operationId: reversePayment
+      tags: [payments]
+      summary: Reverse/void a payment (creates audit trail)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Reversed payment
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Payment"
+
+  /payments/mpesa/callback:
+    post:
+      operationId: mpesaCallback
+      tags: [payments]
+      summary: M-Pesa Paybill C2B callback endpoint (called by Safaricom)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MpesaCallbackPayload"
+      responses:
+        "200":
+          description: Acknowledged
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MpesaAck"
+
+  /payments/mpesa/stk-push:
+    post:
+      operationId: initiateMpesaStkPush
+      tags: [payments]
+      summary: Initiate M-Pesa STK Push to parent phone number
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StkPushRequest"
+      responses:
+        "200":
+          description: STK push initiated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StkPushResponse"
+
+  /payments/mpesa/unmatched:
+    get:
+      operationId: listUnmatchedMpesa
+      tags: [payments]
+      summary: M-Pesa transactions not yet matched to a student account
+      responses:
+        "200":
+          description: Unmatched M-Pesa payments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/UnmatchedMpesa"
+
+  /payments/mpesa/match:
+    post:
+      operationId: matchMpesaPayment
+      tags: [payments]
+      summary: Manually match an unmatched M-Pesa transaction to a student
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MpesaMatchRequest"
+      responses:
+        "200":
+          description: Matched and payment recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Payment"
+
+  # ── Statutory Fund Accounts ────────────────────────────────────────────────
+  /accounts:
+    get:
+      operationId: listAccounts
+      tags: [accounts]
+      summary: List all statutory fund accounts
+      responses:
+        "200":
+          description: Fund accounts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/FundAccount"
+    post:
+      operationId: createAccount
+      tags: [accounts]
+      summary: Create a statutory fund account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FundAccountInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FundAccount"
+
+  /account-transactions:
+    get:
+      operationId: listAccountTransactions
+      tags: [accounts]
+      summary: Get transaction ledger for a fund account
+      parameters:
+        - name: accountId
+          in: query
+          required: true
+          schema:
+            type: integer
+        - name: dateFrom
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: dateTo
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: Account transactions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AccountTransaction"
+
+  # ── Capitation ─────────────────────────────────────────────────────────────
+  /capitation/disbursements:
+    get:
+      operationId: listCapitationDisbursements
+      tags: [capitation]
+      summary: List government capitation disbursements received
+      responses:
+        "200":
+          description: Capitation disbursements
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CapitationDisbursement"
+    post:
+      operationId: recordCapitationDisbursement
+      tags: [capitation]
+      summary: Record a new capitation disbursement from MoE
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CapitationDisbursementInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CapitationDisbursement"
+
+  /capitation/summary:
+    get:
+      operationId: getCapitationSummary
+      tags: [capitation]
+      summary: Per-student capitation allocation summary vs. actual received
+      responses:
+        "200":
+          description: Capitation summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CapitationSummary"
+
+  # ── Expenses ───────────────────────────────────────────────────────────────
+  /expenses:
+    get:
+      operationId: listExpenses
+      tags: [expenses]
+      summary: List expense vouchers
+      parameters:
+        - name: accountId
+          in: query
+          schema:
+            type: integer
+        - name: dateFrom
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: dateTo
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: Expense vouchers
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Expense"
+    post:
+      operationId: createExpense
+      tags: [expenses]
+      summary: Record an expense voucher
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExpenseInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Expense"
+
+  /expenses/{id}:
+    get:
+      operationId: getExpense
+      tags: [expenses]
+      summary: Get expense detail
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Expense detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Expense"
+    delete:
+      operationId: voidExpense
+      tags: [expenses]
+      summary: Void an expense (audit trail preserved)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Voided expense
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Expense"
+
+  # ── Reports ────────────────────────────────────────────────────────────────
+  /reports/term-summary:
+    get:
+      operationId: getTermSummaryReport
+      tags: [reports]
+      summary: Term income and expenditure summary (MoE format)
+      parameters:
+        - name: academicYear
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: term
+          in: query
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Term summary report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TermSummaryReport"
+
+  /reports/vote-book:
+    get:
+      operationId: getVoteBookReport
+      tags: [reports]
+      summary: Vote book (statutory fund expenditure) report
+      parameters:
+        - name: accountId
+          in: query
+          required: true
+          schema:
+            type: integer
+        - name: academicYear
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Vote book report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VoteBookReport"
+
+  /reports/fees-collected:
+    get:
+      operationId: getFeesCollectedReport
+      tags: [reports]
+      summary: Fees collected per class per term
+      parameters:
+        - name: academicYear
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: term
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Fees collected report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FeesCollectedReport"
+
+# ── Schemas ───────────────────────────────────────────────────────────────────
 components:
   schemas:
     HealthStatus:
@@ -31,6 +787,706 @@ components:
       properties:
         status:
           type: string
-      required:
-        - status
+      required: [status]
 
+    # Dashboard
+    DashboardSummary:
+      type: object
+      required: [totalExpected, totalCollected, totalOutstanding, collectionRate, studentCount, activeTermLabel, mpesaToday, cashToday, bankToday]
+      properties:
+        totalExpected:
+          type: number
+        totalCollected:
+          type: number
+        totalOutstanding:
+          type: number
+        collectionRate:
+          type: number
+          description: Percentage 0-100
+        studentCount:
+          type: integer
+        activeTermLabel:
+          type: string
+          description: e.g. "Term 2 2025"
+        mpesaToday:
+          type: number
+        cashToday:
+          type: number
+        bankToday:
+          type: number
+
+    CollectionTrendPoint:
+      type: object
+      required: [date, amount, method]
+      properties:
+        date:
+          type: string
+          format: date
+        amount:
+          type: number
+        method:
+          type: string
+          enum: [mpesa, bank, cash, total]
+
+    FundBalance:
+      type: object
+      required: [accountId, accountName, accountType, balance, currency]
+      properties:
+        accountId:
+          type: integer
+        accountName:
+          type: string
+        accountType:
+          type: string
+          enum: [tuition, operations, bom, capitation]
+        balance:
+          type: number
+        currency:
+          type: string
+
+    DefaultersByClass:
+      type: object
+      required: [class, count, totalOwed]
+      properties:
+        class:
+          type: string
+        count:
+          type: integer
+        totalOwed:
+          type: number
+
+    # Student
+    Student:
+      type: object
+      required: [id, admissionNumber, fullName, class, stream, status, createdAt]
+      properties:
+        id:
+          type: integer
+        admissionNumber:
+          type: string
+        maishaNumber:
+          type: ["string", "null"]
+          description: NEMIS/KEMIS Maisha Number for capitation linking
+        fullName:
+          type: string
+        class:
+          type: string
+          description: e.g. Form 1, Form 2, Form 3, Form 4
+        stream:
+          type: string
+        guardianName:
+          type: ["string", "null"]
+        guardianPhone:
+          type: ["string", "null"]
+        status:
+          type: string
+          enum: [active, cleared, suspended]
+        createdAt:
+          type: string
+          format: date-time
+
+    StudentDetail:
+      type: object
+      required: [student, currentBalance, totalPaid, feeExpected]
+      properties:
+        student:
+          $ref: "#/components/schemas/Student"
+        currentBalance:
+          type: number
+          description: Outstanding balance (positive = owes money)
+        totalPaid:
+          type: number
+        feeExpected:
+          type: number
+        recentPayments:
+          type: array
+          items:
+            $ref: "#/components/schemas/Payment"
+
+    StudentStatement:
+      type: object
+      required: [student, entries, closingBalance]
+      properties:
+        student:
+          $ref: "#/components/schemas/Student"
+        entries:
+          type: array
+          items:
+            $ref: "#/components/schemas/StatementEntry"
+        closingBalance:
+          type: number
+
+    StatementEntry:
+      type: object
+      required: [date, description, debit, credit, balance, term, academicYear]
+      properties:
+        date:
+          type: string
+          format: date
+        description:
+          type: string
+        debit:
+          type: number
+        credit:
+          type: number
+        balance:
+          type: number
+        term:
+          type: integer
+        academicYear:
+          type: string
+
+    StudentInput:
+      type: object
+      required: [admissionNumber, fullName, class, stream]
+      properties:
+        admissionNumber:
+          type: string
+        maishaNumber:
+          type: string
+        fullName:
+          type: string
+        class:
+          type: string
+        stream:
+          type: string
+        guardianName:
+          type: string
+        guardianPhone:
+          type: string
+
+    StudentUpdate:
+      type: object
+      properties:
+        maishaNumber:
+          type: string
+        fullName:
+          type: string
+        class:
+          type: string
+        stream:
+          type: string
+        guardianName:
+          type: string
+        guardianPhone:
+          type: string
+        status:
+          type: string
+          enum: [active, cleared, suspended]
+
+    # Fee Structures
+    FeeStructure:
+      type: object
+      required: [id, academicYear, term, class, totalAmount, breakdown, createdAt]
+      properties:
+        id:
+          type: integer
+        academicYear:
+          type: string
+        term:
+          type: integer
+        class:
+          type: string
+        totalAmount:
+          type: number
+        breakdown:
+          type: array
+          items:
+            $ref: "#/components/schemas/FeeLineItem"
+        createdAt:
+          type: string
+          format: date-time
+
+    FeeLineItem:
+      type: object
+      required: [description, amount, voteCategory]
+      properties:
+        description:
+          type: string
+        amount:
+          type: number
+        voteCategory:
+          type: string
+          enum: [tuition, operations, bom, capitation]
+
+    FeeStructureInput:
+      type: object
+      required: [academicYear, term, class, breakdown]
+      properties:
+        academicYear:
+          type: string
+        term:
+          type: integer
+        class:
+          type: string
+        breakdown:
+          type: array
+          items:
+            $ref: "#/components/schemas/FeeLineItem"
+
+    FeeStructureUpdate:
+      type: object
+      properties:
+        breakdown:
+          type: array
+          items:
+            $ref: "#/components/schemas/FeeLineItem"
+
+    Defaulter:
+      type: object
+      required: [studentId, admissionNumber, fullName, class, feeExpected, totalPaid, balance]
+      properties:
+        studentId:
+          type: integer
+        admissionNumber:
+          type: string
+        fullName:
+          type: string
+        class:
+          type: string
+        guardianPhone:
+          type: ["string", "null"]
+        feeExpected:
+          type: number
+        totalPaid:
+          type: number
+        balance:
+          type: number
+
+    # Payments
+    Payment:
+      type: object
+      required: [id, studentId, amount, method, status, transactionRef, paymentDate, fundAllocation, createdAt]
+      properties:
+        id:
+          type: integer
+        studentId:
+          type: integer
+        amount:
+          type: number
+        method:
+          type: string
+          enum: [mpesa, bank, cash]
+        status:
+          type: string
+          enum: [confirmed, pending, reversed]
+        transactionRef:
+          type: string
+          description: M-Pesa receipt number, bank ref, or cash voucher number
+        mpesaPhone:
+          type: ["string", "null"]
+        paymentDate:
+          type: string
+          format: date-time
+        academicYear:
+          type: string
+        term:
+          type: integer
+        notes:
+          type: ["string", "null"]
+        fundAllocation:
+          type: array
+          items:
+            $ref: "#/components/schemas/FundAllocation"
+        createdAt:
+          type: string
+          format: date-time
+
+    PaymentWithStudent:
+      type: object
+      required: [payment, studentName, admissionNumber, class]
+      properties:
+        payment:
+          $ref: "#/components/schemas/Payment"
+        studentName:
+          type: string
+        admissionNumber:
+          type: string
+        class:
+          type: string
+
+    FundAllocation:
+      type: object
+      required: [accountId, accountType, amount]
+      properties:
+        accountId:
+          type: integer
+        accountType:
+          type: string
+          enum: [tuition, operations, bom, capitation]
+        amount:
+          type: number
+
+    PaymentInput:
+      type: object
+      required: [studentId, amount, method, transactionRef, paymentDate, academicYear, term]
+      properties:
+        studentId:
+          type: integer
+        amount:
+          type: number
+        method:
+          type: string
+          enum: [mpesa, bank, cash]
+        transactionRef:
+          type: string
+        mpesaPhone:
+          type: string
+        paymentDate:
+          type: string
+          format: date-time
+        academicYear:
+          type: string
+        term:
+          type: integer
+        notes:
+          type: string
+
+    MpesaCallbackPayload:
+      type: object
+      required: [Body]
+      properties:
+        Body:
+          type: object
+
+    MpesaAck:
+      type: object
+      required: [ResultCode, ResultDesc]
+      properties:
+        ResultCode:
+          type: integer
+        ResultDesc:
+          type: string
+
+    StkPushRequest:
+      type: object
+      required: [studentId, phoneNumber, amount]
+      properties:
+        studentId:
+          type: integer
+        phoneNumber:
+          type: string
+        amount:
+          type: number
+
+    StkPushResponse:
+      type: object
+      required: [success, message]
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        checkoutRequestId:
+          type: ["string", "null"]
+
+    UnmatchedMpesa:
+      type: object
+      required: [id, mpesaRef, amount, phone, transactionDate]
+      properties:
+        id:
+          type: integer
+        mpesaRef:
+          type: string
+        amount:
+          type: number
+        phone:
+          type: string
+        transactionDate:
+          type: string
+          format: date-time
+        accountNumber:
+          type: ["string", "null"]
+          description: Account number the payer entered (may contain admission number)
+
+    MpesaMatchRequest:
+      type: object
+      required: [unmatchedId, studentId, academicYear, term]
+      properties:
+        unmatchedId:
+          type: integer
+        studentId:
+          type: integer
+        academicYear:
+          type: string
+        term:
+          type: integer
+
+    # Accounts
+    FundAccount:
+      type: object
+      required: [id, name, accountType, description, currentBalance, createdAt]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        accountType:
+          type: string
+          enum: [tuition, operations, bom, capitation]
+        description:
+          type: string
+        currentBalance:
+          type: number
+        createdAt:
+          type: string
+          format: date-time
+
+    FundAccountInput:
+      type: object
+      required: [name, accountType, description]
+      properties:
+        name:
+          type: string
+        accountType:
+          type: string
+          enum: [tuition, operations, bom, capitation]
+        description:
+          type: string
+
+    AccountTransaction:
+      type: object
+      required: [id, accountId, type, amount, balance, description, referenceType, referenceId, transactionDate]
+      properties:
+        id:
+          type: integer
+        accountId:
+          type: integer
+        type:
+          type: string
+          enum: [credit, debit]
+        amount:
+          type: number
+        balance:
+          type: number
+        description:
+          type: string
+        referenceType:
+          type: string
+          enum: [payment, expense, capitation, adjustment]
+        referenceId:
+          type: integer
+        transactionDate:
+          type: string
+          format: date-time
+
+    # Capitation
+    CapitationDisbursement:
+      type: object
+      required: [id, academicYear, term, amount, disbursementDate, moeReference, studentCount, perStudentRate, notes, createdAt]
+      properties:
+        id:
+          type: integer
+        academicYear:
+          type: string
+        term:
+          type: integer
+        amount:
+          type: number
+        disbursementDate:
+          type: string
+          format: date
+        moeReference:
+          type: string
+        studentCount:
+          type: integer
+        perStudentRate:
+          type: number
+        notes:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+          format: date-time
+
+    CapitationDisbursementInput:
+      type: object
+      required: [academicYear, term, amount, disbursementDate, moeReference, studentCount]
+      properties:
+        academicYear:
+          type: string
+        term:
+          type: integer
+        amount:
+          type: number
+        disbursementDate:
+          type: string
+          format: date
+        moeReference:
+          type: string
+        studentCount:
+          type: integer
+        notes:
+          type: string
+
+    CapitationSummary:
+      type: object
+      required: [enrolledStudents, totalDisbursed, expectedAtCurrentRate, perStudentRate, disbursements]
+      properties:
+        enrolledStudents:
+          type: integer
+        totalDisbursed:
+          type: number
+        expectedAtCurrentRate:
+          type: number
+        perStudentRate:
+          type: number
+        disbursements:
+          type: array
+          items:
+            $ref: "#/components/schemas/CapitationDisbursement"
+
+    # Expenses
+    Expense:
+      type: object
+      required: [id, accountId, amount, description, category, voucherNumber, expenseDate, approvedBy, status, createdAt]
+      properties:
+        id:
+          type: integer
+        accountId:
+          type: integer
+        amount:
+          type: number
+        description:
+          type: string
+        category:
+          type: string
+        voucherNumber:
+          type: string
+        expenseDate:
+          type: string
+          format: date
+        approvedBy:
+          type: string
+        supplierName:
+          type: ["string", "null"]
+        status:
+          type: string
+          enum: [approved, void]
+        createdAt:
+          type: string
+          format: date-time
+
+    ExpenseInput:
+      type: object
+      required: [accountId, amount, description, category, voucherNumber, expenseDate, approvedBy]
+      properties:
+        accountId:
+          type: integer
+        amount:
+          type: number
+        description:
+          type: string
+        category:
+          type: string
+        voucherNumber:
+          type: string
+        expenseDate:
+          type: string
+          format: date
+        approvedBy:
+          type: string
+        supplierName:
+          type: string
+
+    # Reports
+    TermSummaryReport:
+      type: object
+      required: [academicYear, term, school, totalExpected, totalCollected, totalExpenditure, surplus, fundBreakdown]
+      properties:
+        academicYear:
+          type: string
+        term:
+          type: integer
+        school:
+          type: string
+        totalExpected:
+          type: number
+        totalCollected:
+          type: number
+        totalExpenditure:
+          type: number
+        surplus:
+          type: number
+        fundBreakdown:
+          type: array
+          items:
+            $ref: "#/components/schemas/FundReportRow"
+
+    FundReportRow:
+      type: object
+      required: [accountType, accountName, income, expenditure, balance]
+      properties:
+        accountType:
+          type: string
+        accountName:
+          type: string
+        income:
+          type: number
+        expenditure:
+          type: number
+        balance:
+          type: number
+
+    VoteBookReport:
+      type: object
+      required: [accountName, accountType, academicYear, openingBalance, transactions, closingBalance]
+      properties:
+        accountName:
+          type: string
+        accountType:
+          type: string
+        academicYear:
+          type: string
+        openingBalance:
+          type: number
+        transactions:
+          type: array
+          items:
+            $ref: "#/components/schemas/AccountTransaction"
+        closingBalance:
+          type: number
+
+    FeesCollectedReport:
+      type: object
+      required: [academicYear, classBreakdown, methodBreakdown, total]
+      properties:
+        academicYear:
+          type: string
+        term:
+          type: ["integer", "null"]
+        classBreakdown:
+          type: array
+          items:
+            $ref: "#/components/schemas/ClassFeeRow"
+        methodBreakdown:
+          type: array
+          items:
+            $ref: "#/components/schemas/MethodFeeRow"
+        total:
+          type: number
+
+    ClassFeeRow:
+      type: object
+      required: [class, expected, collected, outstanding, collectionRate]
+      properties:
+        class:
+          type: string
+        expected:
+          type: number
+        collected:
+          type: number
+        outstanding:
+          type: number
+        collectionRate:
+          type: number
+
+    MethodFeeRow:
+      type: object
+      required: [method, amount, count]
+      properties:
+        method:
+          type: string
+        amount:
+          type: number
+        count:
+          type: integer
