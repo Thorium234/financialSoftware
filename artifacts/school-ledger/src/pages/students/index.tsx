@@ -7,9 +7,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
-import { Search, Plus, Filter, AlertCircle } from "lucide-react";
+import { Search, Filter, AlertCircle } from "lucide-react";
 import { useState } from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { EnrollStudentDialog } from "@/components/enroll-student-dialog";
 
 export default function Students() {
   const [search, setSearch] = useState("");
@@ -22,10 +23,7 @@ export default function Students() {
           <h1 className="text-3xl font-bold tracking-tight">Students</h1>
           <p className="text-muted-foreground">Manage student records, NEMIS details, and outstanding balances.</p>
         </div>
-        <Button>
-          <Plus className="h-4 w-4 mr-2" />
-          Enroll Student
-        </Button>
+        <EnrollStudentDialog />
       </div>
 
       <Card>

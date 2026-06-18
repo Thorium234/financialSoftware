@@ -9,6 +9,7 @@ import {
   Receipt, 
   FileText 
 } from "lucide-react";
+import { StkPushDialog } from "@/components/stk-push-dialog";
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
@@ -51,6 +52,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <header className="h-16 flex items-center px-8 border-b border-border bg-card">
           <div className="flex-1"></div>
           <div className="flex items-center gap-4">
+            <StkPushDialog />
+            <div className="h-4 w-px bg-border" />
             <div className="text-sm font-medium text-muted-foreground">Admin User</div>
             <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-bold text-xs">
               AD

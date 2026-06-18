@@ -45,4 +45,15 @@ No query params — returns school-wide summary.
 ## Hooks with limited params
 - `ListDefaulters` — only `class` and `minBalance` (no `academicYear`, `term`)
 
+## Orval mutation calling convention
+Orval wraps mutation request bodies in `{ data: ... }`. Example:
+```ts
+mutation.mutate({ data: { studentId: 1, phoneNumber: "254...", amount: 5000 } });
+```
+NOT: `mutation.mutate({ studentId: 1, ... })` — that causes TS2353.
+
+## Student fields
+`id`, `admissionNumber`, `maishaNumber`, `fullName`, `class`, `stream`, `guardianName`, `guardianPhone`, `status`, `createdAt`.
+NOT `mpesaPhone` — use `guardianPhone` for pre-filling M-Pesa phone.
+
 **Why:** Orval generates from the OpenAPI spec exactly. Any field not in the spec causes TS2353/TS2339. Always verify against `lib/api-zod/src/generated/api.ts` before writing frontend code.
