@@ -10,6 +10,7 @@ import {
   FileText 
 } from "lucide-react";
 import { StkPushDialog } from "@/components/stk-push-dialog";
+import { OfflineBanner } from "@/components/offline-banner";
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
@@ -49,6 +50,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
       {/* Main Content */}
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
+        <OfflineBanner />
         <header className="h-16 flex items-center px-8 border-b border-border bg-card">
           <div className="flex-1"></div>
           <div className="flex items-center gap-4">

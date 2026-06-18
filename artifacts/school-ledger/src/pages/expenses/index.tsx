@@ -1,8 +1,18 @@
 import { useState } from "react";
-import { useListExpenses, useListAccounts } from "@workspace/api-client-react";
+import {
+  useListExpenses,
+  useListAccounts,
+  useVoidExpense,
+  getListExpensesQueryKey,
+  getGetDashboardSummaryQueryKey,
+} from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
+import { CreateExpenseDialog } from "@/components/create-expense-dialog";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
@@ -15,11 +25,34 @@ const accountNameMap: Record<string, string> = {};
 export default function Expenses() {
   const [search, setSearch] = useState("");
   const [accountFilter, setAccountFilter] = useState("all");
+  const [voidingId, setVoidingId] = useState<number | null>(null);
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   const { data: accounts } = useListAccounts();
   const { data: expenses, isLoading, error } = useListExpenses({
     accountId: accountFilter !== "all" ? Number(accountFilter) : undefined,
   });
+  const voidExpense = useVoidExpense({
+    mutation: {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getListExpensesQueryKey() });
+        queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
+        toast({ title: "Expense voided", description: "Voucher has been marked void." });
+        setVoidingId(null);
+      },
+      onError: () => {
+        toast({ title: "Failed to void expense", variant: "destructive" });
+        setVoidingId(null);
+      },
+    },
+  });
+
+  const handleVoid = (id: number) => {
+    if (!window.confirm("Mark this expense as void? This cannot be undone.")) return;
+    setVoidingId(id);
+    voidExpense.mutate({ id });
+  };
 
   const accLookup: Record<number, string> = {};
   accounts?.forEach(a => { accLookup[a.id] = a.name; });
@@ -42,9 +75,12 @@ export default function Expenses() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Expense Vouchers</h1>
-        <div className="text-sm text-muted-foreground mt-1">School expenditure across all fund accounts</div>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Expense Vouchers</h1>
+          <div className="text-sm text-muted-foreground mt-1">School expenditure across all fund accounts</div>
+        </div>
+        <CreateExpenseDialog />
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
@@ -125,19 +161,20 @@ export default function Expenses() {
                 <TableHead>Date</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right">Amount</TableHead>
+                <TableHead></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading
                 ? Array.from({ length: 6 }).map((_, i) => (
                     <TableRow key={i}>
-                      <TableCell colSpan={8}><Skeleton className="h-5 w-full" /></TableCell>
+                      <TableCell colSpan={9}><Skeleton className="h-5 w-full" /></TableCell>
                     </TableRow>
                   ))
                 : filtered?.length === 0
                 ? (
                     <TableRow>
-                      <TableCell colSpan={8} className="text-center py-12 text-muted-foreground">
+                      <TableCell colSpan={9} className="text-center py-12 text-muted-foreground">
                         <Receipt className="h-8 w-8 mx-auto mb-2 opacity-30" />
                         No expense vouchers found.
                       </TableCell>
@@ -166,6 +203,19 @@ export default function Expenses() {
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right font-medium">{formatCurrency(e.amount)}</TableCell>
+                      <TableCell>
+                        {e.status === "approved" && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-destructive hover:text-destructive text-xs h-7 px-2"
+                            disabled={voidingId === e.id}
+                            onClick={() => handleVoid(e.id)}
+                          >
+                            {voidingId === e.id ? "Voiding…" : "Void"}
+                          </Button>
+                        )}
+                      </TableCell>
                     </TableRow>
                   ))}
             </TableBody>

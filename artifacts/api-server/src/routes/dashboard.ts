@@ -97,7 +97,7 @@ router.get("/dashboard/collection-trend", async (req, res): Promise<void> => {
     .where(
       and(
         eq(paymentsTable.status, "confirmed"),
-        gte(paymentsTable.paymentDate, new Date(Date.now() - 180 * 24 * 60 * 60 * 1000))
+        gte(paymentsTable.paymentDate, new Date(Date.now() - 500 * 24 * 60 * 60 * 1000))
       )
     )
     .groupBy(sql`payment_date::date`, paymentsTable.method)

@@ -3,6 +3,7 @@ import {
   useListPayments,
   useListUnmatchedMpesa,
   useMatchMpesaPayment,
+  useReversePayment,
   useListStudents,
   getListUnmatchedMpesaQueryKey,
   getListPaymentsQueryKey,
@@ -216,6 +217,9 @@ export default function Payments() {
   const [method, setMethod] = useState<string>("all");
   const [status, setStatus] = useState<string>("all");
   const [matchRow, setMatchRow] = useState<UnmatchedRow | null>(null);
+  const [reversingId, setReversingId] = useState<number | null>(null);
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   const { data: payments, isLoading, error } = useListPayments({
     method: method !== "all" ? (method as "mpesa" | "bank" | "cash") : undefined,
@@ -223,6 +227,27 @@ export default function Payments() {
   });
 
   const { data: unmatched, isLoading: isLoadingUnmatched } = useListUnmatchedMpesa();
+
+  const reversePayment = useReversePayment({
+    mutation: {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getListPaymentsQueryKey() });
+        queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
+        toast({ title: "Payment reversed", description: "The payment has been reversed." });
+        setReversingId(null);
+      },
+      onError: () => {
+        toast({ title: "Failed to reverse payment", variant: "destructive" });
+        setReversingId(null);
+      },
+    },
+  });
+
+  const handleReverse = (id: number) => {
+    if (!window.confirm("Reverse this payment? This cannot be undone.")) return;
+    setReversingId(id);
+    reversePayment.mutate({ id });
+  };
 
   const filtered = payments?.filter(pw =>
     !search ||
@@ -304,13 +329,14 @@ export default function Payments() {
                     <TableHead>Date</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead className="text-right">Amount</TableHead>
+                    <TableHead></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {isLoading
                     ? Array.from({ length: 8 }).map((_, i) => (
                         <TableRow key={i}>
-                          <TableCell colSpan={7}><Skeleton className="h-5 w-full" /></TableCell>
+                          <TableCell colSpan={8}><Skeleton className="h-5 w-full" /></TableCell>
                         </TableRow>
                       ))
                     : filtered?.map(pw => (
@@ -341,6 +367,19 @@ export default function Payments() {
                           </TableCell>
                           <TableCell className="text-right font-medium">
                             {formatCurrency(pw.payment.amount)}
+                          </TableCell>
+                          <TableCell>
+                            {pw.payment.status === "confirmed" && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="text-destructive hover:text-destructive text-xs h-7 px-2"
+                                disabled={reversingId === pw.payment.id}
+                                onClick={() => handleReverse(pw.payment.id)}
+                              >
+                                {reversingId === pw.payment.id ? "Reversing…" : "Reverse"}
+                              </Button>
+                            )}
                           </TableCell>
                         </TableRow>
                       ))}

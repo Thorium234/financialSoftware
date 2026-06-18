@@ -73,5 +73,9 @@
     "vite": "catalog:",
     "wouter": "^3.3.5",
     "zod": "catalog:"
+  },
+  "dependencies": {
+    "@tanstack/react-query-persist-client": "^5.101.0",
+    "idb-keyval": "^6.2.5"
   }
 }

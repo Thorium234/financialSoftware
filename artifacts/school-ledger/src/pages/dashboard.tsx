@@ -9,7 +9,18 @@ import { ArrowUpRight, TrendingUp, Users, AlertCircle, Clock, CheckCircle2, Wall
 
 export default function Dashboard() {
   const { data: summary, isLoading: isLoadingSummary, error: summaryError } = useGetDashboardSummary();
-  const { data: trend, isLoading: isLoadingTrend } = useGetCollectionTrend();
+  const { data: trendRaw, isLoading: isLoadingTrend } = useGetCollectionTrend();
+
+  const trend = trendRaw && trendRaw.length > 0
+    ? Object.values(
+        trendRaw.reduce<Record<string, { date: string; amount: number }>>((acc, row) => {
+          const day = row.date.slice(0, 10);
+          if (!acc[day]) acc[day] = { date: day, amount: 0 };
+          acc[day].amount += row.amount;
+          return acc;
+        }, {})
+      ).sort((a, b) => a.date.localeCompare(b.date))
+    : trendRaw;
   const { data: balances, isLoading: isLoadingBalances } = useGetFundBalances();
   const { data: recentPayments, isLoading: isLoadingPayments } = useGetRecentPayments();
   const { data: defaulters, isLoading: isLoadingDefaulters } = useGetDefaultersCount();

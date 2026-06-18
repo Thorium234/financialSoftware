@@ -1,7 +1,9 @@
 import { Switch, Route, Router as WouterRouter } from "wouter";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient } from "@tanstack/react-query";
+import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { createIdbPersister } from "@/lib/idb-persister";
 import NotFound from "@/pages/not-found";
 
 import Dashboard from "@/pages/dashboard";
@@ -16,14 +18,21 @@ import Reports from "@/pages/reports";
 
 import { Layout } from "@/components/layout";
 
+const ONE_HOUR = 1000 * 60 * 60;
+const ONE_DAY = ONE_HOUR * 24;
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       refetchOnWindowFocus: false,
-      retry: false,
+      retry: 1,
+      staleTime: ONE_HOUR,
+      gcTime: ONE_DAY,
     },
   },
 });
+
+const persister = createIdbPersister();
 
 function Router() {
   return (
@@ -46,14 +55,21 @@ function Router() {
 
 function App() {
   return (
-    <QueryClientProvider client={queryClient}>
+    <PersistQueryClientProvider
+      client={queryClient}
+      persistOptions={{
+        persister,
+        maxAge: ONE_DAY,
+        buster: "v2",
+      }}
+    >
       <TooltipProvider>
         <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
           <Router />
         </WouterRouter>
         <Toaster />
       </TooltipProvider>
-    </QueryClientProvider>
+    </PersistQueryClientProvider>
   );
 }
 
