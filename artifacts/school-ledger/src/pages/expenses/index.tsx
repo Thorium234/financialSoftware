@@ -20,8 +20,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle, Search, Receipt } from "lucide-react";
 
-const accountNameMap: Record<string, string> = {};
-
 export default function Expenses() {
   const [search, setSearch] = useState("");
   const [accountFilter, setAccountFilter] = useState("all");

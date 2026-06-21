@@ -1,6 +1,7 @@
 import { useParams, Link } from "wouter";
 import { useGetStudent, useGetStudentStatement } from "@workspace/api-client-react";
 import { formatCurrency, formatDate } from "@/lib/format";
+import { CURRENT_TERM_LABEL } from "@/lib/term";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -175,7 +176,7 @@ export default function StudentDetail() {
         <CardHeader>
           <div className="flex justify-between items-start">
             <div>
-              <CardTitle className="text-base">Fee Statement — 2025 Term 2</CardTitle>
+              <CardTitle className="text-base">Fee Statement — {CURRENT_TERM_LABEL}</CardTitle>
               <CardDescription>Current term payment progress</CardDescription>
             </div>
             {!isLoading && (

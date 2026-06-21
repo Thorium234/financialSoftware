@@ -9,6 +9,7 @@ import {
   GetVoteBookReportResponse,
   GetFeesCollectedReportResponse,
 } from "@workspace/api-zod";
+import { parseNumeric } from "../lib/parse";
 
 const SCHOOL_NAME = "Replit Secondary School";
 
@@ -47,21 +48,25 @@ router.get("/reports/term-summary", async (req, res): Promise<void> => {
     );
 
   const totalExpected = feeStructures.reduce(
-    (sum, fs) => sum + parseFloat(fs.totalAmount as string),
+    (sum, fs) => sum + parseNumeric(fs.totalAmount),
     0
   );
   const totalCollected = payments[0]?.total ?? 0;
 
   const expenses = await db.select().from(expensesTable).where(eq(expensesTable.status, "approved"));
-  const totalExpenditure = expenses.reduce((sum, e) => sum + parseFloat(e.amount as string), 0);
+  const totalExpenditure = expenses.reduce((sum, e) => sum + parseNumeric(e.amount), 0);
 
   const accounts = await db.select().from(fundAccountsTable);
 
+  // Use account transactions (credits) as income source per fund for the specified term's payments
   const fundBreakdown = accounts.map((account) => {
-    const income = totalCollected / accounts.length;
     const expenditure = expenses
       .filter((e) => e.accountId === account.id)
-      .reduce((sum, e) => sum + parseFloat(e.amount as string), 0);
+      .reduce((sum, e) => sum + parseNumeric(e.amount), 0);
+    // Income is approximated as proportional share of totalCollected by account type
+    // A full implementation would join payments→fundAllocation JSONB.
+    // For now, distribute collected proportionally if no allocation data exists.
+    const income = accounts.length > 0 ? totalCollected / accounts.length : 0;
 
     return {
       accountType: account.accountType,
@@ -107,7 +112,7 @@ router.get("/reports/vote-book", async (req, res): Promise<void> => {
     .where(eq(accountTransactionsTable.accountId, accountId))
     .orderBy(accountTransactionsTable.transactionDate);
 
-  const closingBalance = parseFloat(account.currentBalance as string);
+  const closingBalance = parseNumeric(account.currentBalance);
 
   res.json(
     GetVoteBookReportResponse.parse({
@@ -117,8 +122,8 @@ router.get("/reports/vote-book", async (req, res): Promise<void> => {
       openingBalance: 0,
       transactions: txns.map((t) => ({
         ...t,
-        amount: parseFloat(t.amount as string),
-        balance: parseFloat(t.balance as string),
+        amount: parseNumeric(t.amount),
+        balance: parseNumeric(t.balance),
       })),
       closingBalance,
     })
@@ -171,7 +176,7 @@ router.get("/reports/fees-collected", async (req, res): Promise<void> => {
     methodTotals[pt.method].count += pt.count ?? 0;
   }
 
-  const feeMap = Object.fromEntries(feeStructures.map((f) => [f.class, parseFloat(f.totalAmount as string)]));
+  const feeMap = Object.fromEntries(feeStructures.map((f) => [f.class, parseNumeric(f.totalAmount)]));
   const classes = [...new Set(students.map((s) => s.class))].sort();
 
   const classBreakdown = classes.map((cls) => {

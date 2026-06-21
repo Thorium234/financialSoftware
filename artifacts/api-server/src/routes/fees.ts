@@ -12,11 +12,10 @@ import {
   UpdateFeeStructureResponse,
   ListDefaultersResponse,
 } from "@workspace/api-zod";
+import { CURRENT_YEAR, CURRENT_TERM } from "../lib/constants";
+import { parseNumeric } from "../lib/parse";
 
 const router: IRouter = Router();
-
-const CURRENT_YEAR = "2025";
-const CURRENT_TERM = 2;
 
 router.get("/fees/structures", async (req, res): Promise<void> => {
   const params = ListFeeStructuresQueryParams.safeParse(req.query);
@@ -39,7 +38,7 @@ router.get("/fees/structures", async (req, res): Promise<void> => {
     ListFeeStructuresResponse.parse(
       structures.map((s) => ({
         ...s,
-        totalAmount: parseFloat(s.totalAmount as string),
+        totalAmount: parseNumeric(s.totalAmount),
         breakdown: (s.breakdown as any[]) ?? [],
       }))
     )
@@ -67,7 +66,7 @@ router.post("/fees/structures", async (req, res): Promise<void> => {
 
   res.status(201).json({
     ...structure,
-    totalAmount: parseFloat(structure.totalAmount as string),
+    totalAmount: parseNumeric(structure.totalAmount),
     breakdown: (structure.breakdown as any[]) ?? [],
   });
 });
@@ -106,7 +105,7 @@ router.patch("/fees/structures/:id", async (req, res): Promise<void> => {
   res.json(
     UpdateFeeStructureResponse.parse({
       ...structure,
-      totalAmount: parseFloat(structure.totalAmount as string),
+      totalAmount: parseNumeric(structure.totalAmount),
       breakdown: (structure.breakdown as any[]) ?? [],
     })
   );
@@ -150,7 +149,7 @@ router.get("/fees/defaulters", async (req, res): Promise<void> => {
       )
     );
 
-  const feeMap = Object.fromEntries(feeStructures.map((f) => [f.class, parseFloat(f.totalAmount as string)]));
+  const feeMap = Object.fromEntries(feeStructures.map((f) => [f.class, parseNumeric(f.totalAmount)]));
 
   const paymentTotals = await db
     .select({

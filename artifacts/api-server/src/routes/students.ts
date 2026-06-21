@@ -14,11 +14,10 @@ import {
   UpdateStudentResponse,
   GetStudentStatementResponse,
 } from "@workspace/api-zod";
+import { CURRENT_YEAR, CURRENT_TERM } from "../lib/constants";
+import { parseNumeric } from "../lib/parse";
 
 const router: IRouter = Router();
-
-const CURRENT_YEAR = "2025";
-const CURRENT_TERM = 2;
 
 router.get("/students", async (req, res): Promise<void> => {
   const params = ListStudentsQueryParams.safeParse(req.query);
@@ -90,7 +89,7 @@ router.get("/students/:id", async (req, res): Promise<void> => {
       )
     );
 
-  const feeExpected = feeStructure ? parseFloat(feeStructure.totalAmount as string) : 0;
+  const feeExpected = feeStructure ? parseNumeric(feeStructure.totalAmount) : 0;
 
   const [paymentSum] = await db
     .select({ total: sql<number>`sum(amount::numeric)::float` })
@@ -122,7 +121,7 @@ router.get("/students/:id", async (req, res): Promise<void> => {
       feeExpected,
       recentPayments: recentPayments.map((p) => ({
         ...p,
-        amount: parseFloat(p.amount as string),
+        amount: parseNumeric(p.amount),
         fundAllocation: (p.fundAllocation as any[]) ?? [],
       })),
     })
@@ -201,7 +200,7 @@ router.get("/students/:id/statement", async (req, res): Promise<void> => {
 
   const feeMap: Record<string, number> = {};
   for (const fs of allFeeStructures) {
-    feeMap[`${fs.academicYear}-${fs.term}`] = parseFloat(fs.totalAmount as string);
+    feeMap[`${fs.academicYear}-${fs.term}`] = parseNumeric(fs.totalAmount);
   }
 
   const entries: any[] = [];
@@ -230,7 +229,7 @@ router.get("/students/:id/statement", async (req, res): Promise<void> => {
     for (const p of allPayments.filter(
       (p) => `${p.academicYear}-${p.term}` === key
     )) {
-      const amt = parseFloat(p.amount as string);
+      const amt = parseNumeric(p.amount);
       runningBalance -= amt;
       entries.push({
         date: new Date(p.paymentDate).toISOString().slice(0, 10),

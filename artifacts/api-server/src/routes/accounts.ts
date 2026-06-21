@@ -7,6 +7,7 @@ import {
   ListAccountsResponse,
   ListAccountTransactionsResponse,
 } from "@workspace/api-zod";
+import { parseNumeric } from "../lib/parse";
 
 const router: IRouter = Router();
 
@@ -17,7 +18,7 @@ router.get("/accounts", async (req, res): Promise<void> => {
     ListAccountsResponse.parse(
       accounts.map((a) => ({
         ...a,
-        currentBalance: parseFloat(a.currentBalance as string),
+        currentBalance: parseNumeric(a.currentBalance),
       }))
     )
   );
@@ -37,7 +38,7 @@ router.post("/accounts", async (req, res): Promise<void> => {
 
   res.status(201).json({
     ...account,
-    currentBalance: parseFloat(account.currentBalance as string),
+    currentBalance: parseNumeric(account.currentBalance),
   });
 });
 
@@ -66,8 +67,8 @@ router.get("/account-transactions", async (req, res): Promise<void> => {
     ListAccountTransactionsResponse.parse(
       txns.map((t) => ({
         ...t,
-        amount: parseFloat(t.amount as string),
-        balance: parseFloat(t.balance as string),
+        amount: parseNumeric(t.amount),
+        balance: parseNumeric(t.balance),
       }))
     )
   );

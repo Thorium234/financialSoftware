@@ -8,17 +8,23 @@ import {
   GetRecentPaymentsResponse,
   GetDefaultersCountResponse,
 } from "@workspace/api-zod";
+import { CURRENT_YEAR, CURRENT_TERM } from "../lib/constants";
+import { parseNumeric } from "../lib/parse";
 
 const router: IRouter = Router();
 
-const CURRENT_YEAR = "2025";
-const CURRENT_TERM = 2;
-
 router.get("/dashboard/summary", async (req, res): Promise<void> => {
-  const [studentCount] = await db
-    .select({ count: sql<number>`count(*)::int` })
+  // Count active students per class to compute accurate totalExpected
+  const studentClassCounts = await db
+    .select({
+      class: studentsTable.class,
+      count: sql<number>`count(*)::int`,
+    })
     .from(studentsTable)
-    .where(eq(studentsTable.status, "active"));
+    .where(eq(studentsTable.status, "active"))
+    .groupBy(studentsTable.class);
+
+  const totalActiveStudents = studentClassCounts.reduce((sum, r) => sum + r.count, 0);
 
   const feeStructures = await db
     .select()
@@ -30,7 +36,13 @@ router.get("/dashboard/summary", async (req, res): Promise<void> => {
       )
     );
 
-  const totalExpected = feeStructures.reduce((sum, fs) => sum + parseFloat(fs.totalAmount as string), 0) * (studentCount?.count ?? 0) / (feeStructures.length || 1);
+  // Sum (feePerClass × studentsInClass) for each class that has a fee structure
+  const feeMap = Object.fromEntries(feeStructures.map((f) => [f.class, parseNumeric(f.totalAmount)]));
+  const classCounts = Object.fromEntries(studentClassCounts.map((r) => [r.class, r.count]));
+  const totalExpected = Object.entries(feeMap).reduce(
+    (sum, [cls, fee]) => sum + fee * (classCounts[cls] ?? 0),
+    0
+  );
 
   const payments = await db
     .select({
@@ -48,9 +60,6 @@ router.get("/dashboard/summary", async (req, res): Promise<void> => {
     .groupBy(paymentsTable.method);
 
   const totalCollected = payments.reduce((sum, p) => sum + (p.totalAmount ?? 0), 0);
-  const mpesaToday = 0;
-  const cashToday = 0;
-  const bankToday = 0;
 
   const todayPayments = await db
     .select({
@@ -77,7 +86,7 @@ router.get("/dashboard/summary", async (req, res): Promise<void> => {
       totalCollected,
       totalOutstanding,
       collectionRate: Math.round(collectionRate * 10) / 10,
-      studentCount: studentCount?.count ?? 0,
+      studentCount: totalActiveStudents,
       activeTermLabel: `Term ${CURRENT_TERM} ${CURRENT_YEAR}`,
       mpesaToday: todayMap["mpesa"] ?? 0,
       cashToday: todayMap["cash"] ?? 0,
@@ -118,7 +127,7 @@ router.get("/dashboard/fund-balances", async (req, res): Promise<void> => {
         accountId: a.id,
         accountName: a.name,
         accountType: a.accountType,
-        balance: parseFloat(a.currentBalance as string),
+        balance: parseNumeric(a.currentBalance),
         currency: "KES",
       }))
     )
@@ -144,7 +153,7 @@ router.get("/dashboard/recent-payments", async (req, res): Promise<void> => {
       rows.map((r) => ({
         payment: {
           ...r.payment,
-          amount: parseFloat(r.payment.amount as string),
+          amount: parseNumeric(r.payment.amount),
           fundAllocation: (r.payment.fundAllocation as any[]) ?? [],
         },
         studentName: r.studentName,
@@ -171,7 +180,7 @@ router.get("/dashboard/defaulters-count", async (req, res): Promise<void> => {
       )
     );
 
-  const feeMap = Object.fromEntries(feeStructures.map((f) => [f.class, parseFloat(f.totalAmount as string)]));
+  const feeMap = Object.fromEntries(feeStructures.map((f) => [f.class, parseNumeric(f.totalAmount)]));
 
   const paymentTotals = await db
     .select({

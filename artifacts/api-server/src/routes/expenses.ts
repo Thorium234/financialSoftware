@@ -10,11 +10,12 @@ import {
   GetExpenseResponse,
   VoidExpenseResponse,
 } from "@workspace/api-zod";
+import { parseNumeric } from "../lib/parse";
 
 const router: IRouter = Router();
 
 function parseExpense(e: any) {
-  return { ...e, amount: parseFloat(e.amount as string) };
+  return { ...e, amount: parseNumeric(e.amount) };
 }
 
 router.get("/expenses", async (req, res): Promise<void> => {

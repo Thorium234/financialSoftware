@@ -17,13 +17,14 @@ import {
   ListUnmatchedMpesaResponse,
   MatchMpesaPaymentResponse,
 } from "@workspace/api-zod";
+import { parseNumeric } from "../lib/parse";
 
 const router: IRouter = Router();
 
 function parsePayment(p: any) {
   return {
     ...p,
-    amount: parseFloat(p.amount as string),
+    amount: parseNumeric(p.amount),
     fundAllocation: (p.fundAllocation as any[]) ?? [],
   };
 }
@@ -223,7 +224,7 @@ router.get("/payments/mpesa/unmatched", async (req, res): Promise<void> => {
     ListUnmatchedMpesaResponse.parse(
       rows.map((r) => ({
         ...r,
-        amount: parseFloat(r.amount as string),
+        amount: parseNumeric(r.amount),
       }))
     )
   );

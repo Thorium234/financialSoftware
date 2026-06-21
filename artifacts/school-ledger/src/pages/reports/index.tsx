@@ -14,10 +14,11 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { FileText, Download, TrendingUp, Landmark, Receipt } from "lucide-react";
+import { CURRENT_YEAR, CURRENT_TERM } from "@/lib/term";
 
 export default function Reports() {
-  const [year, setYear] = useState("2025");
-  const [term, setTerm] = useState("2");
+  const [year, setYear] = useState(CURRENT_YEAR);
+  const [term, setTerm] = useState(String(CURRENT_TERM));
   const [selectedAccount, setSelectedAccount] = useState<number | null>(null);
 
   const { data: termSummary, isLoading: isLoadingTermSummary } = useGetTermSummaryReport({

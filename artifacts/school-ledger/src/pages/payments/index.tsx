@@ -26,6 +26,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Search, AlertCircle, Smartphone, Banknote, Building2, HelpCircle, GitMerge, Loader2, CheckCircle2 } from "lucide-react";
 import { Link } from "wouter";
 import { RecordPaymentDialog } from "@/components/record-payment-dialog";
+import { CURRENT_YEAR, CURRENT_TERM } from "@/lib/term";
 
 const methodIcon = (method: string) => {
   if (method === "mpesa") return <Smartphone className="h-3.5 w-3.5" />;
@@ -54,8 +55,8 @@ interface UnmatchedRow {
 function MatchDialog({ row, onClose }: { row: UnmatchedRow; onClose: () => void }) {
   const [studentId, setStudentId] = useState("");
   const [search, setSearch] = useState("");
-  const [year] = useState("2025");
-  const [term, setTerm] = useState("2");
+  const [year] = useState(CURRENT_YEAR);
+  const [term, setTerm] = useState(String(CURRENT_TERM));
   const [done, setDone] = useState(false);
 
   const { data: students } = useListStudents();

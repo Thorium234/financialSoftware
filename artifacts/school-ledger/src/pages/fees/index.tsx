@@ -11,14 +11,13 @@ import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle, GraduationCap, Phone } from "lucide-react";
 import { Link } from "wouter";
+import { CURRENT_YEAR, CURRENT_TERM } from "@/lib/term";
 
 const classOrder = ["Form 1", "Form 2", "Form 3", "Form 4"];
 
 export default function Fees() {
-  const [year, setYear] = useState("2025");
-  const [term, setTerm] = useState("2");
-  const [defaulterYear, setDefaulterYear] = useState("2025");
-  const [defaulterTerm, setDefaulterTerm] = useState("2");
+  const [year, setYear] = useState(CURRENT_YEAR);
+  const [term, setTerm] = useState(String(CURRENT_TERM));
 
   const { data: feeStructures, isLoading, error } = useListFeeStructures({
     academicYear: year,
@@ -125,24 +124,6 @@ export default function Fees() {
         </TabsContent>
 
         <TabsContent value="defaulters" className="mt-4 space-y-4">
-          <div className="flex gap-3">
-            <Select value={defaulterYear} onValueChange={setDefaulterYear}>
-              <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="2025">2025</SelectItem>
-                <SelectItem value="2024">2024</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={defaulterTerm} onValueChange={setDefaulterTerm}>
-              <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="1">Term 1</SelectItem>
-                <SelectItem value="2">Term 2</SelectItem>
-                <SelectItem value="3">Term 3</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
           <Card>
             <CardContent className="p-0">
               <Table>

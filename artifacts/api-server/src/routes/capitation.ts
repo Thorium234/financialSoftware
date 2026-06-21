@@ -6,14 +6,15 @@ import {
   ListCapitationDisbursementsResponse,
   GetCapitationSummaryResponse,
 } from "@workspace/api-zod";
+import { parseNumeric } from "../lib/parse";
 
 const router: IRouter = Router();
 
 function parseDisbursement(d: any) {
   return {
     ...d,
-    amount: parseFloat(d.amount as string),
-    perStudentRate: parseFloat(d.perStudentRate as string),
+    amount: parseNumeric(d.amount),
+    perStudentRate: parseNumeric(d.perStudentRate),
   };
 }
 
@@ -55,9 +56,9 @@ router.get("/capitation/summary", async (req, res): Promise<void> => {
 
   const disbursements = await db.select().from(capitationDisbursementsTable);
 
-  const totalDisbursed = disbursements.reduce((sum, d) => sum + parseFloat(d.amount as string), 0);
+  const totalDisbursed = disbursements.reduce((sum, d) => sum + parseNumeric(d.amount), 0);
   const latestRate = disbursements.length > 0
-    ? parseFloat(disbursements[disbursements.length - 1].perStudentRate as string)
+    ? parseNumeric(disbursements[disbursements.length - 1].perStudentRate)
     : 22265;
 
   const enrolled = studentCount?.count ?? 0;

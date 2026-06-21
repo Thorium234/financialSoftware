@@ -18,6 +18,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { PlusCircle, Loader2, CheckCircle2, Banknote } from "lucide-react";
 import { formatCurrency } from "@/lib/format";
+import { CURRENT_YEAR, CURRENT_TERM } from "@/lib/term";
 
 export function RecordPaymentDialog() {
   const [open, setOpen] = useState(false);
@@ -28,7 +29,7 @@ export function RecordPaymentDialog() {
   const [transactionRef, setTransactionRef] = useState("");
   const [mpesaPhone, setMpesaPhone] = useState("");
   const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split("T")[0]);
-  const [term, setTerm] = useState("2");
+  const [term, setTerm] = useState(String(CURRENT_TERM));
   const [notes, setNotes] = useState("");
   const [done, setDone] = useState(false);
 
@@ -48,7 +49,7 @@ export function RecordPaymentDialog() {
   function reset() {
     setStudentId(""); setSearch(""); setAmount(""); setMethod("cash");
     setTransactionRef(""); setMpesaPhone(""); setPaymentDate(new Date().toISOString().split("T")[0]);
-    setTerm("2"); setNotes(""); setDone(false);
+    setTerm(String(CURRENT_TERM)); setNotes(""); setDone(false);
   }
 
   function handleClose(open: boolean) {
@@ -76,7 +77,7 @@ export function RecordPaymentDialog() {
           transactionRef,
           mpesaPhone: method === "mpesa" ? mpesaPhone : undefined,
           paymentDate: `${paymentDate}T00:00:00.000Z`,
-          academicYear: "2025",
+          academicYear: CURRENT_YEAR,
           term: Number(term),
           notes: notes || undefined,
         },
@@ -229,9 +230,9 @@ export function RecordPaymentDialog() {
               <Select value={term} onValueChange={setTerm}>
                 <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="1">Term 1 — 2025</SelectItem>
-                  <SelectItem value="2">Term 2 — 2025</SelectItem>
-                  <SelectItem value="3">Term 3 — 2025</SelectItem>
+                  <SelectItem value="1">Term 1 — {CURRENT_YEAR}</SelectItem>
+                  <SelectItem value="2">Term 2 — {CURRENT_YEAR}</SelectItem>
+                  <SelectItem value="3">Term 3 — {CURRENT_YEAR}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
