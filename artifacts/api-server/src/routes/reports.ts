@@ -58,15 +58,29 @@ router.get("/reports/term-summary", async (req, res): Promise<void> => {
 
   const accounts = await db.select().from(fundAccountsTable);
 
-  // Use account transactions (credits) as income source per fund for the specified term's payments
+  const incomeRows = await db
+    .select({
+      accountId: accountTransactionsTable.accountId,
+      total: sql<number>`sum(${accountTransactionsTable.amount}::numeric)::float`,
+    })
+    .from(accountTransactionsTable)
+    .innerJoin(paymentsTable, eq(accountTransactionsTable.referenceId, paymentsTable.id))
+    .where(
+      and(
+        eq(accountTransactionsTable.referenceType, "payment"),
+        eq(paymentsTable.academicYear, academicYear),
+        eq(paymentsTable.term, term)
+      )
+    )
+    .groupBy(accountTransactionsTable.accountId);
+
+  const incomeMap = Object.fromEntries(incomeRows.map((row) => [row.accountId, row.total ?? 0]));
+
   const fundBreakdown = accounts.map((account) => {
     const expenditure = expenses
       .filter((e) => e.accountId === account.id)
       .reduce((sum, e) => sum + parseNumeric(e.amount), 0);
-    // Income is approximated as proportional share of totalCollected by account type
-    // A full implementation would join payments→fundAllocation JSONB.
-    // For now, distribute collected proportionally if no allocation data exists.
-    const income = accounts.length > 0 ? totalCollected / accounts.length : 0;
+    const income = incomeMap[account.id] ?? 0;
 
     return {
       accountType: account.accountType,

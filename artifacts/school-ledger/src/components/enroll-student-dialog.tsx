@@ -1,5 +1,12 @@
 import { useState } from "react";
-import { useCreateStudent, getListStudentsQueryKey } from "@workspace/api-client-react";
+import {
+  useCreateStudent,
+  getListStudentsQueryKey,
+  getGetDashboardSummaryQueryKey,
+  getGetDefaultersCountQueryKey,
+  getListDefaultersQueryKey,
+  getGetCapitationSummaryQueryKey,
+} from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -64,6 +71,10 @@ export function EnrollStudentDialog() {
       {
         onSuccess: () => {
           queryClient.invalidateQueries({ queryKey: getListStudentsQueryKey() });
+          queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
+          queryClient.invalidateQueries({ queryKey: getGetDefaultersCountQueryKey() });
+          queryClient.invalidateQueries({ queryKey: getListDefaultersQueryKey() });
+          queryClient.invalidateQueries({ queryKey: getGetCapitationSummaryQueryKey() });
           setDone({ name: fullName, admNo: admissionNumber });
           toast({
             title: "Student Enrolled",

@@ -1,5 +1,14 @@
 import { useState } from "react";
-import { useListStudents, useRecordPayment, getListPaymentsQueryKey, getGetDashboardSummaryQueryKey } from "@workspace/api-client-react";
+import {
+  useListStudents,
+  useRecordPayment,
+  getListPaymentsQueryKey,
+  getGetDashboardSummaryQueryKey,
+  getGetStudentQueryKey,
+  getGetStudentStatementQueryKey,
+  getGetDefaultersCountQueryKey,
+  getListDefaultersQueryKey,
+} from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -86,6 +95,12 @@ export function RecordPaymentDialog() {
         onSuccess: () => {
           queryClient.invalidateQueries({ queryKey: getListPaymentsQueryKey() });
           queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
+          queryClient.invalidateQueries({ queryKey: getGetDefaultersCountQueryKey() });
+          queryClient.invalidateQueries({ queryKey: getListDefaultersQueryKey() });
+          if (selectedStudent) {
+            queryClient.invalidateQueries({ queryKey: getGetStudentQueryKey(selectedStudent.id) });
+            queryClient.invalidateQueries({ queryKey: getGetStudentStatementQueryKey(selectedStudent.id) });
+          }
           setDone(true);
           toast({
             title: "Payment Recorded",

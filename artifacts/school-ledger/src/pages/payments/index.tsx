@@ -8,6 +8,10 @@ import {
   getListUnmatchedMpesaQueryKey,
   getListPaymentsQueryKey,
   getGetDashboardSummaryQueryKey,
+  getGetStudentQueryKey,
+  getGetStudentStatementQueryKey,
+  getGetDefaultersCountQueryKey,
+  getListDefaultersQueryKey,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
@@ -91,6 +95,12 @@ function MatchDialog({ row, onClose }: { row: UnmatchedRow; onClose: () => void 
           queryClient.invalidateQueries({ queryKey: getListUnmatchedMpesaQueryKey() });
           queryClient.invalidateQueries({ queryKey: getListPaymentsQueryKey() });
           queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
+          queryClient.invalidateQueries({ queryKey: getGetDefaultersCountQueryKey() });
+          queryClient.invalidateQueries({ queryKey: getListDefaultersQueryKey() });
+          if (selectedStudent) {
+            queryClient.invalidateQueries({ queryKey: getGetStudentQueryKey(selectedStudent.id) });
+            queryClient.invalidateQueries({ queryKey: getGetStudentStatementQueryKey(selectedStudent.id) });
+          }
           setDone(true);
           toast({
             title: "Payment Matched",
@@ -229,25 +239,34 @@ export default function Payments() {
 
   const { data: unmatched, isLoading: isLoadingUnmatched } = useListUnmatchedMpesa();
 
-  const reversePayment = useReversePayment({
-    mutation: {
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: getListPaymentsQueryKey() });
-        queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
-        toast({ title: "Payment reversed", description: "The payment has been reversed." });
-        setReversingId(null);
-      },
-      onError: () => {
-        toast({ title: "Failed to reverse payment", variant: "destructive" });
-        setReversingId(null);
-      },
-    },
-  });
+  const reversePayment = useReversePayment();
 
   const handleReverse = (id: number) => {
     if (!window.confirm("Reverse this payment? This cannot be undone.")) return;
     setReversingId(id);
-    reversePayment.mutate({ id });
+    const affectedPayment = payments?.find((pw) => pw.payment.id === id);
+
+    reversePayment.mutate(
+      { id },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: getListPaymentsQueryKey() });
+          queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
+          queryClient.invalidateQueries({ queryKey: getGetDefaultersCountQueryKey() });
+          queryClient.invalidateQueries({ queryKey: getListDefaultersQueryKey() });
+          if (affectedPayment) {
+            queryClient.invalidateQueries({ queryKey: getGetStudentQueryKey(affectedPayment.payment.studentId) });
+            queryClient.invalidateQueries({ queryKey: getGetStudentStatementQueryKey(affectedPayment.payment.studentId) });
+          }
+          toast({ title: "Payment reversed", description: "The payment has been reversed." });
+          setReversingId(null);
+        },
+        onError: () => {
+          toast({ title: "Failed to reverse payment", variant: "destructive" });
+          setReversingId(null);
+        },
+      }
+    );
   };
 
   const filtered = payments?.filter(pw =>
