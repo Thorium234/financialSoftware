@@ -1,2 +1,0 @@
-- [SchoolLedger API field shapes](school-ledger-api-shapes.md) — API response shapes differ from naive expectations; critical for type safety.
-- [TanStack Query v5 enabled pattern](tanstack-query-enabled.md) — UseQueryOptions requires queryKey; conditionally skip instead of passing enabled alone.

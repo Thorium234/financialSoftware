@@ -2,7 +2,7 @@
 
 A hybrid cloud/offline-resilient school finance management system for Kenyan secondary schools.
 
-Handles M-Pesa Paybill C2B reconciliation, statutory fund accounting (Tuition / Operations / BOM / Capitation), KEMIS/NEMIS Maisha Number capitation tracking, and MoE-compliant reporting.
+Handles M-Pesa Paybill C2B reconciliation, statutory fund accounting (Tuition / Operations / BOM / Capitation), NEMIS Maisha Number capitation tracking, and MoE-compliant reporting.
 
 ---
 
@@ -10,7 +10,7 @@ Handles M-Pesa Paybill C2B reconciliation, statutory fund accounting (Tuition / 
 
 | Layer | Tech |
 |---|---|
-| API | Express 5, Node.js 22+, TypeScript 5.9 |
+| API | Express 5, Node.js ≥22, TypeScript 5.9 |
 | Database | PostgreSQL 16 + Drizzle ORM |
 | Frontend | React 19, Vite 7, TailwindCSS 4, shadcn/ui |
 | State | TanStack Query v5 + IndexedDB persistence |
@@ -22,98 +22,139 @@ Handles M-Pesa Paybill C2B reconciliation, statutory fund accounting (Tuition / 
 
 ## Prerequisites
 
-- **Node.js** ≥ 22 (use [nvm](https://github.com/nvm-sh/nvm))
-- **pnpm** ≥ 10 — `npm install -g pnpm`
-- **PostgreSQL** 16 running locally (or a remote connection string)
+- **Node.js** ≥22 — use [nvm](https://github.com/nvm-sh/nvm): `nvm install 22 && nvm use 22`
+- **pnpm** ≥10 — `npm install -g pnpm`
+- **PostgreSQL** 16 running locally (or Docker: see below)
 
 ---
 
-## Local Setup
-
-### 1. Clone and install
+## Quick start (local)
 
 ```bash
-git clone <repo-url>
-cd kenyan-bursar-system
+# 1. Clone
+git clone https://github.com/Thorium234/financialSoftware.git
+cd financialSoftware
+
+# 2. Install dependencies
 pnpm install
-```
 
-### 2. Configure environment
-
-```bash
+# 3. Configure environment
 cp .env.example .env
-```
+# Edit .env — set DATABASE_URL, PORT=8080, SESSION_SECRET
 
-Edit `.env` and set at minimum:
-
-```env
-DATABASE_URL=postgresql://user:password@localhost:5432/kenyan_bursar
-PORT=8080
-SESSION_SECRET=any-long-random-string
-```
-
-### 3. Push database schema
-
-```bash
+# 4. Push database schema
 pnpm --filter @workspace/db run push
-```
 
-### 4. Run the API server
+# 5a. Terminal 1 — API server (live reload)
+pnpm --filter @workspace/api-server run dev:watch
 
-```bash
-# Build then start (one-shot)
-pnpm --filter @workspace/api-server run dev:build
-
-# Or keep it live with tsx watch:
-cd artifacts/api-server
-npx tsx watch src/index.ts
-```
-
-> The API server listens on `http://localhost:8080`. Vite proxies `/api/*` there automatically.
-
-### 5. Run the frontend
-
-In a separate terminal:
-
-```bash
+# 5b. Terminal 2 — Frontend
 pnpm --filter @workspace/school-ledger run dev
 ```
 
-Open `http://localhost:5173`.
+Open **http://localhost:5173** — Vite proxies `/api/*` to the Express server at port 8080.
 
 ---
 
-## Available Scripts (workspace root)
+## PostgreSQL via Docker (optional)
 
-| Command | Description |
-|---|---|
-| `pnpm run build` | Typecheck + build all packages |
-| `pnpm run typecheck` | Full TypeScript typecheck |
-| `pnpm --filter @workspace/api-spec run codegen` | Regenerate API hooks and Zod schemas from OpenAPI spec |
-| `pnpm --filter @workspace/db run push` | Push schema changes to the database (dev only) |
+If you don't have Postgres installed locally:
+
+```bash
+docker run -d \
+  --name kenyan-bursar-db \
+  -e POSTGRES_USER=bursar \
+  -e POSTGRES_PASSWORD=bursar \
+  -e POSTGRES_DB=kenyan_bursar \
+  -p 5432:5432 \
+  postgres:16-alpine
+```
+
+Then set in `.env`:
+
+```env
+DATABASE_URL=postgresql://bursar:bursar@localhost:5432/kenyan_bursar
+```
 
 ---
 
-## Project Layout
+## Environment variables
+
+Copy `.env.example` to `.env` and fill in:
+
+| Variable | Required | Description |
+|---|---|---|
+| `DATABASE_URL` | ✅ | PostgreSQL connection string |
+| `PORT` | ✅ | API server port (default: 8080) |
+| `SESSION_SECRET` | ✅ | Session signing secret (any long random string) |
+| `API_URL` | ❌ | Override API proxy target in Vite (default: `http://localhost:8080`) |
+
+---
+
+## Available scripts
+
+### Make shortcuts
+
+```bash
+make install     # pnpm install
+make db-push     # Push Drizzle schema to DB
+make dev-api     # API server with live reload (port 8080)
+make dev-ui      # Vite frontend (port 5173)
+make codegen     # Regenerate API client from OpenAPI spec
+make typecheck   # Full TypeScript typecheck
+make build       # Production build
+```
+
+### Raw pnpm commands
+
+```bash
+pnpm run typecheck                              # Full TS typecheck
+pnpm run build                                  # Typecheck + build all packages
+pnpm --filter @workspace/api-server run dev:watch   # API — tsx watch (live reload)
+pnpm --filter @workspace/api-server run dev:build   # API — esbuild then run
+pnpm --filter @workspace/school-ledger run dev      # Frontend
+pnpm --filter @workspace/api-spec run codegen       # Regen API hooks/schemas
+pnpm --filter @workspace/db run push                # Push schema to DB
+```
+
+---
+
+## Project layout
 
 ```
 artifacts/
-  api-server/        Express route handlers
-  school-ledger/     React SPA
-  mockup-sandbox/    UI prototyping (standalone)
+  api-server/        Express route handlers (src/routes/)
+  school-ledger/     React SPA (src/pages/, src/components/)
+  mockup-sandbox/    UI prototyping only — not part of the main app
 lib/
-  api-spec/          OpenAPI spec + Orval config (source of truth)
+  api-spec/          openapi.yaml + Orval config (source of truth)
   api-zod/           Generated Zod schemas — never edit directly
-  api-client-react/  Generated React Query hooks — never edit directly
-  db/                Drizzle ORM schema + connection
+  api-client-react/  Generated TanStack Query hooks — never edit directly
+  db/                Drizzle ORM schema + DB connection
 scripts/             Workspace utility scripts
 ```
 
 ---
 
-## Key Architecture Notes
+## Architecture notes
 
-- **Contract-first**: edit `lib/api-spec/openapi.yaml`, then run codegen. Never write client fetch code by hand.
+- **Contract-first**: edit `lib/api-spec/openapi.yaml`, run `make codegen`. Never write client fetch code by hand.
 - **Academic term**: update `artifacts/api-server/src/lib/constants.ts` and `artifacts/school-ledger/src/lib/term.ts` at the start of each term.
-- **M-Pesa**: the STK Push is simulated. Real integration requires Safaricom Daraja credentials set as env vars.
-- **Offline mode**: the frontend caches all queries to IndexedDB — data is available without a network connection.
+- **M-Pesa STK Push**: simulated locally. Real integration requires Safaricom Daraja credentials.
+- **Offline mode**: the frontend caches all queries to IndexedDB — data stays available without network.
+- **Fund accounting**: 4 statutory vote accounts (Tuition, Operations, BOM, Capitation) with double-entry transactions. Every payment and expense posts to the correct account ledger.
+
+---
+
+## Pages
+
+| Page | Route | Description |
+|---|---|---|
+| Dashboard | `/` | KPIs, collection trend, fund balances, recent payments |
+| Students | `/students` | List with search/class filter; detail with full ledger |
+| Payments | `/payments` | Full log; Unmatched M-Pesa tab |
+| Fee Structures | `/fees` | Term schedules; Defaulters tab |
+| Fund Accounts | `/accounts` | 4 statutory fund cards; click to drill into ledger |
+| Capitation | `/capitation` | MoE disbursements; NEMIS Maisha coverage |
+| Expenses | `/expenses` | Voucher log; void action |
+| Reports | `/reports` | Term Summary, Vote Book, Fees Collected |

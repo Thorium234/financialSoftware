@@ -13,6 +13,7 @@ node_modules/
 .env
 .env.local
 .env.*.local
+# .env.example is intentionally NOT ignored — it's a template for contributors
 
 # ── IDEs ──────────────────────────────────────────────────────────────────────
 .idea/
@@ -40,7 +41,5 @@ coverage/
 # ── Replit runtime artifacts (not needed locally) ─────────────────────────────
 .cache/
 .local/
-
-
-.env.example
-	.vscode/
+.replit-artifact/
+.agents/
